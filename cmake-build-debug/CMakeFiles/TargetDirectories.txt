@@ -1,3 +1,0 @@
-C:/Users/jayaa/CLionProjects/Poker/cmake-build-debug/CMakeFiles/Poker.dir
-C:/Users/jayaa/CLionProjects/Poker/cmake-build-debug/CMakeFiles/edit_cache.dir
-C:/Users/jayaa/CLionProjects/Poker/cmake-build-debug/CMakeFiles/rebuild_cache.dir
