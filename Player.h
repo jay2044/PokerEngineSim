@@ -1,35 +1,43 @@
-#ifndef POKER_PLAYER_H
-#define POKER_PLAYER_H
+#ifndef PLAYER_H
+#define PLAYER_H
 
-#include "Card.h"
 #include <vector>
 #include <string>
+#include "Card.h"
 
 class Player {
 public:
     Player();
-    virtual ~Player() {}
-    virtual bool isComputer() const { return false; }
-    bool isPlaying = true;
+    explicit Player(std::string  name);
+    virtual ~Player() = default;
 
-    virtual void addChips(int amount);
-    virtual bool betChips(int amount);
-    virtual void setHoleCards(const Card& card1, const Card& card2);
-    virtual void clearCards();
+    virtual bool isComputer() const { return false; }
+
+    void addChips(int amount);
+    bool betChips(int amount);
+    void setHoleCards(const Card& card1, const Card& card2);
+    void clearCards();
     std::string showHoleCards() const;
-    virtual std::vector<Card> getHoleCards();
-    int getChips();
-    int getCurrentBet() const {
-        return currentBet;
-    };
-    void updateCurrentBet(int bet) {
-        currentBet = bet;
-    };
+    const std::vector<Card>& getHoleCards() const;
+    int getChips() const;
+    int getCurrentBet() const { return currentBet; }
+    bool isStillPlaying() const { return isPlaying; }
+    void setPlaying(bool val) {isPlaying = val;}
+    const std::string& getName() const { return name; }
+
+    void fold() { isPlaying = false; }
+    bool check() const { return currentBet == 0; }
+    bool call(int amount);
+    bool raise(int amount);
+    void reset();
+    void resetCurrentBet();
 
 protected:
+    std::string name;
     std::vector<Card> holeCards;
-    int chips;
+    int chips = 0;
     int currentBet = 0;
+    bool isPlaying = true;
 };
 
-#endif // POKER_PLAYER_H
+#endif // PLAYER_H

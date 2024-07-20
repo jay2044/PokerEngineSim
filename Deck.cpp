@@ -28,13 +28,34 @@ void Deck::shuffle() {
     currentCardIndex = 0;
 }
 
+//Card Deck::dealCard() {
+//    if (cards.empty()) {
+//        throw std::runtime_error("No more cards in the deck.");
+//    }
+//
+//    Card dealtCard = cards.front(); // Get the first card
+//    cards.erase(cards.begin());     // Remove the first card from the deck
+//
+//    return dealtCard;               // Return the dealt card
+//}
+
 Card Deck::dealCard() {
-    if (cards.empty()) {
+    if (currentCardIndex >= int(cards.size())) {
         throw std::runtime_error("No more cards in the deck.");
     }
+    return cards[currentCardIndex++];
+}
 
-    Card dealtCard = cards.front(); // Get the first card
-    cards.erase(cards.begin());     // Remove the first card from the deck
+void Deck::reset() {
+    cards.clear();
+    for (int suit = static_cast<int>(Suit::Hearts); suit <= static_cast<int>(Suit::Spades); ++suit) {
+        for (int rank = static_cast<int>(Rank::Two); rank <= static_cast<int>(Rank::Ace); ++rank) {
+            cards.emplace_back(static_cast<Suit>(suit), static_cast<Rank>(rank));
+        }
+    }
+    currentCardIndex = 0;
+}
 
-    return dealtCard;               // Return the dealt card
+size_t Deck::cardsRemaining() const {
+    return cards.size() - currentCardIndex;
 }

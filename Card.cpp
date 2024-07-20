@@ -20,3 +20,4 @@ std::string Card::toString() const {
 
     return rankNames[static_cast<int>(rank)] + " of " + suitNames[static_cast<int>(suit)];
 }
+

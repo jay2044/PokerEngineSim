@@ -1,40 +1,41 @@
-//
-// Created by jayaa on 1/1/2024.
-//
-
-#ifndef POKER_COMPUTER_H
-#define POKER_COMPUTER_H
+#ifndef COMPUTER_H
+#define COMPUTER_H
 
 #include "Player.h"
-#include "Card.h"
 #include <vector>
 #include <string>
 
 class Computer : public Player {
 public:
-    // Constructors
+    // Default constructor
     Computer();
-    explicit Computer(float aggressiveness, float riskAversion, float predictability);
-    bool isComputer() const override { return true; }
 
-    // Getters and Setters for personality traits
-    float getAggressiveness() const;
-    void setAggressiveness(float aggressiveness);
+    // Constructor with personality traits
+    Computer(float aggressiveness, float riskAversion, float predictability);
 
-    float getRiskAversion() const;
-    void setRiskAversion(float riskAversion);
+    // Constructor with name and personality traits
+    Computer(const std::string& name, float aggressiveness, float riskAversion, float predictability);
 
-    float getPredictability() const;
-    void setPredictability(float predictability);
+    // Constructor with name
+    Computer(const std::string& name);
 
+    // Method to make a decision
     std::string& makeDecision(const std::vector<Card>& communityCards);
 
+    // Getters for personality traits
+    float getAggressiveness() const;
+    float getRiskAversion() const;
+    float getPredictability() const;
+
+    // Setters for personality traits
+    void setAggressiveness(float aggressiveness);
+    void setRiskAversion(float riskAversion);
+    void setPredictability(float predictability);
+
 private:
-    // Personality traits
-    float aggressiveness; // How likely to make bold moves
-    float riskAversion;   // Preference for safe plays over potential high-reward plays
-    float predictability; // Consistency in playing style
+    float aggressiveness;
+    float riskAversion;
+    float predictability;
 };
 
-
-#endif //POKER_COMPUTER_H
+#endif // COMPUTER_H

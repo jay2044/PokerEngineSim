@@ -5,14 +5,23 @@
 #include "Computer.h"
 
 // Default constructor
-Computer::Computer() : Player(),aggressiveness(0.5), riskAversion(0.5), predictability(0.5) {}
+Computer::Computer() : Player("Computer"), aggressiveness(0.5), riskAversion(0.5), predictability(0.5) {}
 
 // Constructor with personality traits
 Computer::Computer(float aggressiveness, float riskAversion, float predictability)
-        : aggressiveness(aggressiveness), riskAversion(riskAversion), predictability(predictability) {}
+        : Player("Computer"), aggressiveness(aggressiveness), riskAversion(riskAversion), predictability(predictability) {}
+
+// Constructor with name and personality traits
+Computer::Computer(const std::string& name, float aggressiveness, float riskAversion, float predictability)
+        : Player(name), aggressiveness(aggressiveness), riskAversion(riskAversion), predictability(predictability) {}
+
+// Constructor with name
+Computer::Computer(const std::string& name)
+        : Player(name), aggressiveness(0.5), riskAversion(0.5), predictability(0.5) {}
 
 std::string& Computer::makeDecision(const std::vector<Card>& communityCards) {
-
+    static std::string decision = "Fold"; // Placeholder
+    return decision;
 }
 
 // Getters for personality traits

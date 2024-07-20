@@ -14,6 +14,8 @@ public:
     Deck();
     void shuffle();
     Card dealCard();
+    void reset();
+    size_t cardsRemaining() const;
 
 private:
     std::vector<Card> cards;

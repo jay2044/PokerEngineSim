@@ -11,7 +11,9 @@
 #include <vector>
 #include <memory>
 
-enum class ActionType { Fold, Check, Bet, Invalid };
+enum class ActionType {
+    Fold, Check, Bet, Invalid, Call
+};
 struct Decision {
     ActionType action;
     int amount;
@@ -19,38 +21,55 @@ struct Decision {
 
 class Game {
 public:
-    Game();
+    Game(int numPlayers, int startingChips, int smallBlind, int bigBlind);
+
     void play();
-    bool gameOver = false;
-    bool continueBetting = true;
 
 private:
+    std::vector<std::shared_ptr<Player>> players;
+    std::vector<std::shared_ptr<Player>> activePlayers;
     Deck deck;
-    static std::vector<std::shared_ptr<Player>> players;
-    static std::vector<std::shared_ptr<Player>> queue;
     std::vector<Card> communityCards;
-    int highestBet = 0;
-    int previousHighestBet = 0;
-    int smallBlind = 10;
-    int bigBlind = 20;
+    int pot = 0;
+    int dealerIndex = 0;
+    int smallBlind = 0;
+    int bigBlind = 0;
 
-    std::shared_ptr<Player> highestBettor;
+    void dealHoleCards();
 
-    void displayCommunityCards();
-    Decision getDecision(const std::shared_ptr<Player>& player);
-    void handleDecision(const Decision &decision, const std::shared_ptr<Player> &player);
-    Decision getUserDecision();
-    Decision determineInput(const std::string& input);
-    void resetForNewRound();
-    static bool checkEndGameConditions();
-    void determineWinner(const std::vector<Card>& communityCards);
-    void startBetting();
-    static void bet(const std::shared_ptr<Player>& player, int amount);
-    static int getIndex(const std::shared_ptr<Player> &player);
+    void dealFlop();
 
-    float evaluateHand(const std::shared_ptr<Player>& player, const std::vector<Card>& communityCards);
-    bool isPairRank(const Card& card1, const Card& card2);
-    bool isPairSuit(const Card& card1, const Card& card2);
+    void dealTurn();
+
+    void dealRiver();
+
+    void conductBettingRound();
+
+    void determineWinner();
+
+    void resetForNewHand();
+
+    bool isGameOver() const;
+
+
+    int getPlayerIndex(const std::shared_ptr<Player> &player);
+
+    float evaluateHand(const std::shared_ptr<Player> &player, const std::vector<Card> &communityCards);
+
+    bool isPairRank(const Card &card1, const Card &card2);
+
+    bool isPairSuit(const Card &card1, const Card &card2);
+
+    Decision getDecision(const std::shared_ptr<Player> &player, int amountToCall);
+
+    void handleDecision(const Decision &decision, const std::shared_ptr<Player> &player, int amountToCall);
+
+    Decision getUserDecision(const std::shared_ptr<Player> &player, int amountToCall);
+
+    Decision determineInput(const std::string &input, int amountToCall);
+
+    static void clearTerminal() ;
+    void displayGameState();
 };
 
 

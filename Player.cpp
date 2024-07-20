@@ -1,6 +1,11 @@
 #include "Player.h"
 
-Player::Player() : chips(5000) {}
+#include <utility>
+
+Player::Player() : Player("NoName") {
+}
+
+Player::Player(std::string  name) : name(std::move(name)) {}
 
 void Player::addChips(int amount) {
     chips += amount;
@@ -11,6 +16,7 @@ bool Player::betChips(int amount) {
         return false;
     }
     chips -= amount;
+    currentBet += amount;
     return true;
 }
 
@@ -20,21 +26,45 @@ void Player::setHoleCards(const Card& card1, const Card& card2) {
     holeCards.push_back(card2);
 }
 
-std::string Player::showHoleCards() const {
-    if (holeCards.size() != 2) {
-        return "No hole cards set";
-    }
-    return holeCards[0].toString() + ", " + holeCards[1].toString();
-}
-
 void Player::clearCards() {
     holeCards.clear();
 }
 
-int Player::getChips() {
+std::string Player::showHoleCards() const {
+    // Assuming Card has a method toString() to represent the card as a string
+    return  "|" + holeCards[0].toString() + "||" + holeCards[1].toString() + "|";
+}
+
+const std::vector<Card>& Player::getHoleCards() const {
+    return holeCards;
+}
+
+int Player::getChips() const {
     return chips;
 }
 
-std::vector<Card> Player::getHoleCards() {
-    return holeCards;
+bool Player::call(int amount) {
+    if (amount <= chips) {
+        return betChips(amount);
+    }
+    return false;
 }
+
+bool Player::raise(int amount) {
+    if (amount > chips) {
+        return false;
+    }
+    return betChips(amount);
+}
+
+void Player::reset() {
+    clearCards();
+    currentBet = 0;
+    isPlaying = true;
+}
+
+void Player::resetCurrentBet() {
+    currentBet = 0;
+}
+
+

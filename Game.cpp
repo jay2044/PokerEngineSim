@@ -3,246 +3,174 @@
 //
 
 #include "Game.h"
-#include "Player.h"
-#include "Deck.h"
-#include "Computer.h"
 #include <iostream>
-#include <vector>
-#include <memory>
 #include <algorithm>
 #include <map>
 
 
-std::vector<std::shared_ptr<Player>> Game::players;
-std::vector<std::shared_ptr<Player>> Game::queue;
-int pot = 0;
-int round = 0;
-int dealerIndex = 0;
-
-Game::Game() {
-    players.push_back(std::make_shared<Player>());
-    players.push_back(std::make_shared<Player>());
-//    players.push_back(std::make_shared<Player>());
-};
+Game::Game(int numPlayers, int startingChips, int smallBlind, int bigBlind)
+        : dealerIndex(0), pot(0), smallBlind(smallBlind), bigBlind(bigBlind) {
+    for (int i = 0; i < numPlayers; i++) {
+        players.push_back(std::make_shared<Player>());
+        players[i]->addChips(startingChips);
+    }
+    activePlayers = players;
+}
 
 void Game::play() {
     std::cout << "Starting the Poker Game!" << std::endl;
+    while (!isGameOver()) {
+        resetForNewHand();
+        dealHoleCards();
+        displayGameState();
+        conductBettingRound();
+        displayGameState();
+        if (activePlayers.size() > 1) {
+            dealFlop();
+            displayGameState();
+            conductBettingRound();
+            displayGameState();
+        }
+        if (activePlayers.size() > 1) {
+            dealTurn();
+            displayGameState();
+            conductBettingRound();
+            displayGameState();
+        }
+        if (activePlayers.size() > 1) {
+            dealRiver();
+            displayGameState();
+            conductBettingRound();
+            displayGameState();
+        }
+        determineWinner();
+    }
+}
 
-    while(!gameOver) {
-        resetForNewRound();
-        if (checkEndGameConditions()){
-            gameOver = true;
+
+void Game::conductBettingRound() {
+    int highestBet = 0;
+    size_t lastBettor = activePlayers.size();
+    size_t currentPlayerIndex = 0;
+
+    while (true) {
+        auto &player = activePlayers[currentPlayerIndex];
+
+        if (!player->isStillPlaying() || player->getChips() == 0) {
+            currentPlayerIndex = (currentPlayerIndex + 1) % activePlayers.size();
+            continue;
+        }
+
+        int amountToCall = highestBet - player->getCurrentBet();
+
+        Decision decision = getUserDecision(player, amountToCall);
+        handleDecision(decision, player, amountToCall);
+
+        if (decision.action == ActionType::Bet || decision.action == ActionType::Call) {
+            highestBet = std::max(highestBet, player->getCurrentBet());
+            if (decision.action == ActionType::Bet) {
+                lastBettor = currentPlayerIndex;
+            }
+        }
+
+        currentPlayerIndex = (currentPlayerIndex + 1) % activePlayers.size();
+
+        // Check if the round is complete
+        if (currentPlayerIndex == lastBettor ||
+            std::count_if(activePlayers.begin(), activePlayers.end(),
+                          [](const auto &p) { return p->isStillPlaying(); }) <= 1) {
             break;
         }
-        if (queue.size() >= 3) {
-            bet(players[1], smallBlind);
-            bet(players[2], bigBlind);
-        } else {
-            bet(players[1], bigBlind);
-        }
-        round += 1;
-        std::cout<<"Round "<<round<<std::endl;
-
-        for (auto& player : queue) {
-            player->setHoleCards(deck.dealCard(), deck.dealCard());
-            if (!player->isComputer()){
-                std::cout << "Player"<<getIndex(player)<<" cards: " << player->showHoleCards() << std::endl;
-            }
-        }
-        // Pre-flop betting
-        startBetting();
-        if (checkEndGameConditions()){determineWinner(communityCards); continue;}
-
-        // Flop
-        for (int i = 0; i < 3; i++) {
-            communityCards.push_back(deck.dealCard());
-        }
-        displayCommunityCards();
-
-        // Post-flop betting
-        startBetting();
-        if (checkEndGameConditions()){determineWinner(communityCards); continue;}
-
-        // Turn
-        communityCards.push_back(deck.dealCard());
-        displayCommunityCards();
-
-        // Post-turn betting
-        startBetting();
-        if (checkEndGameConditions()){determineWinner(communityCards); continue;}
-
-        // River
-        communityCards.push_back(deck.dealCard());
-        displayCommunityCards();
-
-        // Post-river betting
-        startBetting();
-        if (checkEndGameConditions()){determineWinner(communityCards); continue;}
-
-        // Declare winner and add chips
-        determineWinner(communityCards);
-
-        std::cout << "Game round over!" << std::endl;
     }
 
-}
-
-void Game::startBetting() {
-    highestBet = 0;
-    previousHighestBet = 0;
-    continueBetting = true;
-    highestBettor = nullptr;
-
-    while (continueBetting) {
-        continueBetting = false;
-        std::cout<<"continueBetting set false"<<std::endl;
-        for (auto& player : queue) {
-            if (player == highestBettor) {
-                std::cout<<"highestBettor skipped"<<std::endl;
-                continue;
-            }
-            Decision decision = getDecision(player);
-            handleDecision(decision, player);
-            std::cout<<"previousHighestBet:"<<previousHighestBet<<std::endl;
-            std::cout<<"highestBet:"<<highestBet<<std::endl;
-
-            if (decision.action == ActionType::Bet && decision.amount > previousHighestBet) {
-                std::cout<<"player"<<getIndex(player)<<" placed higher bet"<<std::endl;
-                highestBettor = player;
-                continueBetting = true;
-                break;
-            } else {
-                std::cout<<"player didnt place higher bet"<<std::endl;
-            }
-        }
-        if(!continueBetting) {
-            std::cout<<"ending bet round"<<std::endl;
-        }
-    }
-    for (auto& player : queue) {
-        bet(player, highestBet);
+    // Collect bets into the pot
+    for (auto &player : activePlayers) {
+        pot += player->getCurrentBet();
+        player->resetCurrentBet();
     }
 }
 
-
-
-
-void Game::displayCommunityCards() {
-    std::cout<<std::endl << "Community Cards: " << std::endl;
-    for (auto& card : communityCards) {
-        std::cout << card.toString() << std::endl;
-    }
-    std::cout<<std::endl;
-}
-
-Decision Game::getDecision(const std::shared_ptr<Player>& player) {
+Decision Game::getDecision(const std::shared_ptr<Player> &player, int amountToCall) {
     if (player->isComputer()) {
-        std::string& decisionValue = dynamic_cast<Computer*>(player.get())->makeDecision(communityCards);
-        return determineInput(decisionValue);
+//        std::string computerDecision = dynamic_cast<Computer *>(player.get())->makeDecision(communityCards);
+//        return determineInput(computerDecision, amountToCall);
+        printf("cawaev5165\n");
     } else {
-        return getUserDecision();
+        return getUserDecision(player, amountToCall);
     }
 }
 
-void Game::handleDecision(const Decision& decision, const std::shared_ptr<Player>& player) {
-    switch(decision.action) {
-        case ActionType::Fold:
-            // Implement folding logic
-            player->isPlaying = false;
-            std::cout << "player"<<getIndex(player)<<" folds" << std::endl;
-            if (checkEndGameConditions()){determineWinner(communityCards);}
-            break;
-        case ActionType::Check:
-            if (highestBet > 0) {
-                std::cout << "player"<<getIndex(player)<<" calls" << std::endl;
-            } else {
-                std::cout << "player"<<getIndex(player)<<" checks" << std::endl;
-            }
-            break;
-        case ActionType::Bet:
-//            bet(player, decision.amount);
-            pot += decision.amount;
-            if (decision.amount >= highestBet || player->getChips() == decision.amount) {
-                previousHighestBet = highestBet;
-                highestBet = decision.amount;
-            }
-            break;
-        case ActionType::Invalid:
-        default:
-            std::cout << "bruh wat is u saying??" << std::endl;
-            break;
-    }
-}
-
-Decision Game::getUserDecision() {
+Decision Game::getUserDecision(const std::shared_ptr<Player> &player, int amountToCall) {
     std::string input;
-    Decision decision{};
+    Decision decision;
     do {
-        std::cout << "Your action (fold, check/call, bet): ";
+        std::cout << "Player " << getPlayerIndex(player) << ", your action (fold, check/call, bet): ";
         std::cin >> input;
-        decision = determineInput(input);
-        // Repeat until valid input is given
-    } while(decision.action == ActionType::Invalid);
+        decision = determineInput(input, amountToCall);
+
+        if (decision.action == ActionType::Bet) {
+            if (decision.amount > player->getChips()) {
+                std::cout << "Invalid bet amount. You only have " << player->getChips() << " chips." << std::endl;
+                decision.action = ActionType::Invalid;
+            }
+        }
+
+        if (decision.action == ActionType::Invalid) {
+            std::cout << "Invalid input. Please try again." << std::endl;
+        }
+    } while (decision.action == ActionType::Invalid);
+
     return decision;
 }
 
+void Game::handleDecision(const Decision &decision, const std::shared_ptr<Player> &player, int amountToCall) {
+    switch (decision.action) {
+        case ActionType::Fold:
+            player->setPlaying(false);
+            std::cout << "Player " << getPlayerIndex(player) << " folds." << std::endl;
+            break;
+        case ActionType::Check:
+            std::cout << "Player " << getPlayerIndex(player) << " checks." << std::endl;
+            break;
+        case ActionType::Call:
+            std::cout << "Player " << getPlayerIndex(player) << " calls " << amountToCall << "." << std::endl;
+            player->betChips(amountToCall);
+            break;
+        case ActionType::Bet:
+            std::cout << "Player " << getPlayerIndex(player) << " bets " << decision.amount << "." << std::endl;
+            player->betChips(decision.amount);
+            break;
+        default:
+            std::cout << "Invalid action. Player " << getPlayerIndex(player) << " folds." << std::endl;
+            player->setPlaying(false);
+            break;
+    }
+}
 
-Decision Game::determineInput(const std::string& input) {
+Decision Game::determineInput(const std::string &input, int amountToCall) {
     if (input == "fold") {
         return {ActionType::Fold, 0};
-    } else if (input == "check" || input == "call") {
-        return {ActionType::Check, highestBet};
-    } else if (input == "bet") {
-        int betAmount;
+    } else if (input == "check") {
+        return {ActionType::Check, 0};
+    } else if (input == "call") {
+        return {ActionType::Call, amountToCall};
+    } else if (input.substr(0, 3) == "bet") {
+        int betAmount = 0;
         std::cout << "Enter bet amount: ";
         std::cin >> betAmount;
-        if (betAmount >= highestBet){ return {ActionType::Bet, static_cast<int>(betAmount)}; }
+        if (betAmount >= amountToCall) {
+            return {ActionType::Bet, betAmount};
+        }
     }
     return {ActionType::Invalid, 0}; // Invalid input
 }
 
-void Game::resetForNewRound() {
-    deck.shuffle();
-    communityCards.clear();
-    queue.clear();
 
-    // Update dealerIndex for the new round
-    dealerIndex = (dealerIndex + 1) % players.size();
-
-    // Start queue from the player next to the dealer
-    for (size_t i = 0; i < players.size(); ++i) {
-        size_t playerIndex = (dealerIndex + i) % players.size();
-        if (players[playerIndex]->getChips() > 0) {
-            players[playerIndex]->clearCards();
-            players[playerIndex]->isPlaying = true;
-            queue.push_back(players[playerIndex]);
-        }
-    }
-
-    pot = 0;
-}
-
-
-
-
-bool Game::checkEndGameConditions() {
-    for (auto it = queue.begin(); it != queue.end(); ) {
-        if (!(*it)->isPlaying) {
-            it = queue.erase(it);
-        } else {
-            ++it;
-        }
-    }
-    if (queue.size() > 1) { return false; }
-    return true;
-}
-
-
-void Game::determineWinner(const std::vector<Card>& communityCards) {
+void Game::determineWinner() {
     // Check if there's only one player left (others have folded)
-    if (queue.size() == 1) {
-        std::cout << "Winner by default: Player"<< getIndex(queue[0]) << std::endl;
-        queue.front()->addChips(pot);
+    if (activePlayers.size() == 1) {
+        std::cout << "Winner by default: Player" << getPlayerIndex(activePlayers[0]) << std::endl;
+        activePlayers.front()->addChips(pot);
         return;
     }
 
@@ -250,7 +178,7 @@ void Game::determineWinner(const std::vector<Card>& communityCards) {
     std::shared_ptr<Player> bestPlayer = nullptr;
     float rating;
 
-    for (const auto& player : queue) {
+    for (const auto &player: activePlayers) {
         float playerRating = evaluateHand(player, communityCards);
         if (rating < playerRating) {
             bestPlayer = player;
@@ -259,22 +187,15 @@ void Game::determineWinner(const std::vector<Card>& communityCards) {
     }
 
     if (bestPlayer) {
-        std::cout << "Winner is: Player"<< getIndex(bestPlayer) << std::endl;
+        std::cout << "Winner is: Player" << getPlayerIndex(bestPlayer) << std::endl;
         bestPlayer->addChips(pot);
-        std::cout<<rating;
+        std::cout << rating;
     } else {
         std::cout << "No winner determined." << std::endl;
     }
 }
 
-
-void Game::bet(const std::shared_ptr<Player>& player, int amount) {
-    player->betChips(amount);
-    player->updateCurrentBet(amount);
-    std::cout << "player"<<getIndex(player)<<" bets: " << amount << std::endl << " player"<<getIndex(player)<<" chips: " << player->getChips() << std::endl;
-}
-
-int Game::getIndex(const std::shared_ptr<Player>& player) {
+int Game::getPlayerIndex(const std::shared_ptr<Player> &player) {
     for (size_t i = 0; i < players.size(); ++i) {
         if (players[i] == player) {
             return static_cast<int>(i);
@@ -283,18 +204,19 @@ int Game::getIndex(const std::shared_ptr<Player>& player) {
     return -1;
 }
 
-float Game::evaluateHand(const std::shared_ptr<Player>& player, const std::vector<Card>& communityCards) {
+
+float Game::evaluateHand(const std::shared_ptr<Player> &player, const std::vector<Card> &communityCards) {
     float rating = 0;
 
     std::vector<Card> hand = player->getHoleCards();
     hand.insert(hand.end(), communityCards.begin(), communityCards.end());
 
     std::map<Rank, int> frequency;
-    for (const Card& card : hand) {
+    for (const Card &card: hand) {
         frequency[card.getRank()]++;
     }
 
-    for (const auto& pair : frequency) {
+    for (const auto &pair: frequency) {
         int n = pair.second;
         rating += (n * (n - 1)) / 2.0f;
     }
@@ -324,4 +246,147 @@ bool Game::isPairSuit(const Card &card1, const Card &card2) {
         return true;
     }
     return false;
+}
+
+
+void Game::resetForNewHand() {
+    deck.shuffle();
+    communityCards.clear();
+    activePlayers.clear();
+
+    // Update dealerIndex for the new round
+    dealerIndex = (dealerIndex + 1) % players.size();
+
+    // Start activePlayers from the player next to the dealer
+    for (size_t i = 0; i < players.size(); ++i) {
+        size_t playerIndex = (dealerIndex + i) % players.size();
+        if (players[playerIndex]->getChips() > 0) {
+            players[playerIndex]->clearCards();
+            players[playerIndex]->setPlaying(true);
+            activePlayers.push_back(players[playerIndex]);
+        }
+    }
+
+    pot = 0;
+}
+
+void Game::dealHoleCards() {
+    for (auto &player: activePlayers) {
+        player->setHoleCards(deck.dealCard(), deck.dealCard());
+//        if (!player->isComputer()) {
+//            std::cout << "Player" << getPlayerIndex(player) << " cards: " << player->showHoleCards() << std::endl;
+//        }
+    }
+}
+
+void Game::dealFlop() {
+    for (int i = 0; i < 3; i++) {
+        communityCards.push_back(deck.dealCard());
+    }
+}
+
+void Game::dealTurn() {
+    communityCards.push_back(deck.dealCard());
+}
+
+void Game::dealRiver() {
+    communityCards.push_back(deck.dealCard());
+}
+
+
+bool Game::isGameOver() const {
+    // Count the number of players with chips
+    int playersWithChips = 0;
+    for (const auto &player: players) {
+        if (player->getChips() > 0) {
+            playersWithChips++;
+        }
+    }
+
+    // If only one player has chips, the game is over
+    if (playersWithChips <= 1) {
+        return true;
+    }
+
+    // You can add additional game-ending conditions here
+    // For example, you might want to end the game after a certain number of rounds
+    // if (gameRound >= MAX_ROUNDS) {
+    //     return true;
+    // }
+
+    // Or if a player has reached a certain chip count
+    // for (const auto& player : players) {
+    //     if (player->getChips() >= WINNING_CHIP_COUNT) {
+    //         return true;
+    //     }
+    // }
+
+    // If none of the ending conditions are met, the game continues
+    return false;
+}
+
+
+#include <iomanip>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <cstdlib>
+#endif
+
+void Game::clearTerminal() {
+#ifdef _WIN32
+    // For Windows
+    system("cls");
+#else
+    // For Unix/Linux
+    system("clear");
+#endif
+}
+
+void Game::displayGameState() {
+    clearTerminal();
+
+    std::cout << "\n=== Poker Game State ===" << std::endl << std::endl;
+
+    // Display community cards
+    std::cout << "Community Cards: ";
+    if (communityCards.empty()) {
+        std::cout << "Not dealt yet";
+    } else {
+        for (const auto& card : communityCards) {
+            std::cout << card.toString() << " ";
+        }
+    }
+    std::cout << std::endl << std::endl;
+
+    // Display pot
+    std::cout << "Current Pot: $" << pot << std::endl << std::endl;
+
+    // Display player information
+    std::cout << std::left << std::setw(15) << "Player"
+              << std::setw(35) << "Hole Cards"
+              << std::setw(10) << "Chips"
+              << std::setw(15) << "Current Bet"
+              << "Status" << std::endl;
+    std::cout << std::string(80, '-') << std::endl;
+
+    for (const auto& player : players) {
+        std::cout << std::left << std::setw(15) << ("Player " + std::to_string(getPlayerIndex(player)));
+
+        // Display hole cards (or [Hidden] for computer players)
+        if (player->isComputer()) {
+            std::cout << std::setw(35) << "[Hidden]";
+        } else {
+            std::string cards = player->showHoleCards();
+            std::cout << std::setw(35) << (cards.empty() ? "Not dealt" : cards);
+        }
+
+        std::cout << std::setw(10) << player->getChips()
+                  << std::setw(15) << player->getCurrentBet()
+                  << (player->isStillPlaying() ? "Active" : "Folded")
+                  << std::endl;
+    }
+
+    std::cout << std::endl;
 }
