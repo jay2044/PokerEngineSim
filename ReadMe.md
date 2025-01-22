@@ -78,7 +78,7 @@ PokerEngineSimulator/
 ├── include/
 │   └── (Header files)
 ├── lib/
-│   └── (External libraries, if any)
+│   └── (External libraries)
 ├── README.md
 ├── LICENSE
 └── Makefile
