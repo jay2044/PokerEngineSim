@@ -12,7 +12,7 @@
 
 ## Description
 
-The **Poker Engine Simulator** is an interactive command-line based Texas Hold'em poker game developed in C++. It offers a robust hand evaluator capable of accurately processing over 2.5 million possible hand combinations. The simulator features AI opponents with diverse, human-like strategies, enhancing the decision-making experience and providing a challenging gameplay environment. Optimized with advanced C++ algorithms, the simulator ensures high performance, reducing computation time by 20% and seamlessly handling simulations with up to 10 concurrent players.
+**Poker Engine Simulator** is an interactive command-line based Texas Hold'em poker game developed in C++. It offers a robust hand evaluator capable of accurately processing over 2.5 million possible hand combinations. The simulator features AI opponents with diverse, human-like strategies, enhancing the decision-making experience and providing a challenging gameplay environment. Optimized with advanced C++ algorithms, the simulator ensures high performance, reducing computation time by 20% and seamlessly handling simulations with up to 10 concurrent players.
 
 ## Features
 
